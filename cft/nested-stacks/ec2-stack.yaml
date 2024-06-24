@@ -1,0 +1,214 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: >-
+  Project Lupin: CFN Template to create an EC2 instance.
+
+Metadata:
+  TemplateName: ec2-stack.yaml
+  TemplateType: EC2 Instance
+  Version: 1.0.0
+  Owner: Subhamay Bhattacharyya
+  ProjectName: Lupin
+  Modification History:
+    - 1.0.0  - Jun 12, 2024   -- Initial Version 
+  Resources: 
+    - EC2 instance
+  StepsToTest: |
+    Manualy verify the Stack.
+  StepsToCleanup: |
+    Stack delete command
+
+  AWS::CloudFormation::Interface:
+    ParameterGroups:
+    #################################### Project Name and Environment ##############################
+    - Label:
+        default: "Project Name And Environment:"
+      Parameters:
+      - ProjectName
+      - Environment
+    #################################### GitHub Attributes #########################################
+    - Label:
+        default: "GitHub Attributes:"
+      Parameters:
+      - GitHubRef
+      - GitHubURL
+      - GitHubWFRunNumber
+      - GitHubSHA
+      - GitHubRepository
+      - CiBuild
+    #################################### EC2 #######################################################
+    - Label: 
+        default: "EC2 Instance Configuration:"
+      Parameters: 
+        - NameTag
+        - EC2InstanceType
+        - EC2ImageId
+        - SubnetId
+        - SecurityGroupId
+        - EC2InstanceProfile
+        - AssignPublicIPAddress
+        - PrivateIPAddress
+    ParameterLabels:
+      ################################## Project Name and Environment ##############################
+      ProjectName:
+        default: "Project Name."
+      Environment:
+        default: "Environment Name."
+      # ################################## KMS Key ###################################################
+      # KmsMasterKeyArn:
+      #   default: "KMS Key Arn."
+      ################################## GitHub Attributes #########################################
+      GitHubRef:
+        default: "GitHub Ref."
+      GitHubURL:
+        default: "GitHub URL."
+      GitHubWFRunNumber:
+        default: "GitHub Workflow Run Number."
+      GitHubSHA:
+        default: "GitHub SHA"
+      GitHubRepository:
+        default: "GitHub Repository."
+      CiBuild:
+        default: "Ci Build."
+      ################################### EC2  #####################################################
+      NameTag: 
+        default: EC2 name tag
+      EC2InstanceType:
+        default: Type of EC2 instance to launch for the server.
+      EC2ImageId:
+        default: EC2 Image Id.
+      SubnetId:
+        default: The Subnet where the EC2 instance will be created.
+      SecurityGroupId: 
+        default: EC2 Security Group Id
+      EC2InstanceProfile: 
+        default: EC2 Instance Profile
+      AssignPublicIPAddress:
+        default: Assign public IP address
+      PrivateIPAddress: 
+        default: "Private IP address of the EC2 instance."
+Parameters:
+  ###################################### Project Name and Environment ##############################
+  ProjectName:
+    Default: lupin
+    Description: "The project name that will be used as resource name prefixes and will be used to tag resources to track the project cost."
+    Type: String
+    MinLength: 5
+    MaxLength: 20
+    AllowedPattern: "[a-z]*"
+    ConstraintDescription: "The length should be between 5 and 30, must contain only lowercase alphabets."
+  Environment:
+    Default: devl
+    Description: "The deployment environment (dev/test/prod)."
+    Type: String
+    AllowedValues: ["devl", "test", "prod"]
+    ConstraintDescription: "The Environment must be devl / test or prod"
+  ###################################### GitHub Attributes #########################################
+  GitHubRef:
+    Default: ref_name
+    Description: "GitHub ref name"
+    Type: String
+  GitHubURL:
+    Default: "https://github.com/"
+    Description: "GitHub URL"
+    Type: String
+  GitHubWFRunNumber:
+    Default: 1
+    Description: "The GitHub workflow run number for the latest CI/CD pipeline."
+    Type: Number
+  GitHubSHA:
+    Default: "27e994ee4b064c37170c9a702c44b676c3295e1f"
+    Description: "The sha value of the last commit."
+    Type: String
+  GitHubRepository:
+    Default: 0104-lupin-cft
+    Description: "The GitHub repository name."
+    Type: String
+    MinLength: 10
+    MaxLength: 30
+    AllowedPattern: "[a-z0-9-.]*"
+    ConstraintDescription: "The reposiroty length should be between 10 and 30, must contain only lowercase letter,numbers,dash, dot and should start with a letter."
+  CiBuild:
+    Default: ""
+    Description: "Ci Build of the feature branch."
+    Type: String
+  ###################################### EC2 #######################################################
+  NameTag: 
+    Description: Name of the EC2 instance
+    Type: String
+    MinLength: 10
+    MaxLength: 30
+  EC2InstanceType:
+    Description: Type of ec2 instance to launch for the server.
+    Type: String
+    Default: t2.micro
+    ConstraintDescription: Must be a valid EC2 instance type
+    AllowedValues: 
+      - t2.nano
+      - t2.micro
+      - t2.small
+  EC2ImageId:
+    Description: Image Id To Be Used To Launch The EC2 Instance.
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+  SecurityGroupId: 
+    Description: "Security Group Id for the EC2 instance"
+    Type: String
+  SubnetId:
+    Description: VPC Subnet where the EC2 instance will be launched.
+    Type: AWS::EC2::Subnet::Id
+    AllowedPattern: "[a-z0-9-]*"
+  EC2InstanceProfile:
+    Description: "EC2 Instance Profile."
+    Type: String
+  AssignPublicIPAddress: 
+    Description: Automatically assign a public IP address
+    Type: String
+    AllowedValues:
+         - "true"
+         - "false"
+  PrivateIPAddress: 
+    Description: Private IP Address of the EC2 instance
+    Type: String
+Resources:
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref EC2InstanceType
+      ImageId: !Ref EC2ImageId
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      NetworkInterfaces: 
+      - AssociatePublicIpAddress: !Ref AssignPublicIPAddress
+        DeviceIndex: "0"
+        GroupSet: 
+          - !Ref SecurityGroupId
+        SubnetId: !Ref SubnetId
+        PrivateIpAddresses: 
+          - Primary: "true"
+            PrivateIpAddress: !Ref PrivateIPAddress
+      Tags:
+        - Key: Name
+          Value: !Ref NameTag
+        - Key: ProjectName
+          Value: !Ref ProjectName
+        - Key: Environment
+          Value: !Ref Environment
+        - Key: GitHubRepository
+          Value: !Ref GitHubRepository
+        - Key: GitHubRef
+          Value: !Ref GitHubRef
+        - Key: GitHubURL
+          Value: !Ref GitHubURL
+        - Key: GitHubWFRunNumber
+          Value: !Ref GitHubWFRunNumber
+        - Key: GitHubSHA
+          Value: !Ref GitHubSHA
+        - Key: CiBuild
+          Value: !Ref CiBuild
+Outputs:
+  EC2InstanceId:
+    Description: The EC2 Instance Id.
+    Value: !Ref EC2Instance
+  EC2PrivateIP:
+    Description: The EC2 instance Private IP
+    Value: !GetAtt EC2Instance.PrivateIp
+
